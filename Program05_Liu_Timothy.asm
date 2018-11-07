@@ -14,7 +14,7 @@ TITLE Sorting Random Integers     (Program05_Liu_Timothy.asm)
 INCLUDE Irvine32.inc
 
 MIN	= 10	; Lowest valid value for user request
-MAX = 200	; Highest valid value for user request
+MAX = 200	; Highest valid value for user request; size of array
 LO = 100	; Lowest possible random integer
 HI = 999	; Highest possible random integer
 
@@ -30,6 +30,7 @@ promptText		BYTE	"How many numbers should be generated? "
 				BYTE	"[10 .. 200]: ", 0									; Prompt to user to input value
 request			DWORD	?													; Number of integers to generate, inputted by user
 invalidInput	BYTE	"Invalid input", 0									; Text for invalid user input
+array			DWORD	MAX DUP(?)											; Uninitialized array of 32-bit ints to hold random ints		
 unsortedText	BYTE	"The unsorted random numbers:", 0dh, 0ah, 0			; Text preceding unsorted list
 medianText		BYTE	"The median is: ", 0								; Text preceding median of list
 sortedText		BYTE	"The sorted list:", 0dh, 0ah, 0						; Text preceding sorted list
@@ -37,8 +38,10 @@ sortedText		BYTE	"The sorted list:", 0dh, 0ah, 0						; Text preceding sorted li
 .code
 main PROC
 	call	introduction
-	push	OFFSET request	; Pass by reference to getData
+	push	OFFSET request	; Pass request variable by reference to getData
 	call	getData
+	push	request			; Pass request variable by value to fillArray
+	push	OFFSET array	; Pass array by reference to fillArray
 	call	fillArray
 	call	displayList		; Display unsorted list
 	call	sortList
@@ -99,9 +102,9 @@ validInput:
 	ret		4					; Clear stack frame
 getData	ENDP
 
-; Description: 
-; Receives: 
-; Returns: 
+; Description: Procedure fills an array with random integers
+; Receives: request variable by value and @ array
+; Returns: array filled with request many random integers
 ; Preconditions: 
 ; Registers changed: 
 
