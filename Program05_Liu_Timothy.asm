@@ -14,7 +14,7 @@ TITLE Sorting Random Integers     (Program05_Liu_Timothy.asm)
 INCLUDE Irvine32.inc
 
 MIN	= 10	; Lowest valid value for user request
-MAX = 200	; Highest valid value for user request
+MAX = 200	; Highest valid value for user request; size of array
 LO = 100	; Lowest possible random integer
 HI = 999	; Highest possible random integer
 
@@ -30,22 +30,34 @@ promptText		BYTE	"How many numbers should be generated? "
 				BYTE	"[10 .. 200]: ", 0									; Prompt to user to input value
 request			DWORD	?													; Number of integers to generate, inputted by user
 invalidInput	BYTE	"Invalid input", 0									; Text for invalid user input
+array			DWORD	MAX DUP(?)											; Uninitialized array of 32-bit ints to hold random ints		
 unsortedText	BYTE	"The unsorted random numbers:", 0dh, 0ah, 0			; Text preceding unsorted list
 medianText		BYTE	"The median is: ", 0								; Text preceding median of list
 sortedText		BYTE	"The sorted list:", 0dh, 0ah, 0						; Text preceding sorted list
 
 .code
 main PROC
+	;call	Randomize			; Set seed for generating random numbers
 	call	introduction
-	push	OFFSET request	; Pass by reference to getData
+	push	OFFSET request		; Pass request variable by reference to getData
 	call	getData
+
+; Fill an array with 'request' number of values
+	push	request				; Pass request variable by value to fillArray
+	push	OFFSET array		; Pass array by reference to fillArray
 	call	fillArray
-	call	displayList		; Display unsorted list
+
+; Display unsorted list
+	push	request				; Pass request variable by value to displayList
+	push	OFFSET array		; Pass array by reference to displayList
+	push	OFFSET unsortedText	; Pass title of unsorted list to displayList
+	call	displayList			; Display unsorted list
+
 	call	sortList
 	call	displayMedian
-	call	displayList		; Display sorted list
+	call	displayList			; Display sorted list
 
-	exit					; Exit to operating system
+	exit						; Exit to operating system
 main ENDP
 
 ; Description: Procedure to introduce the program and programmer
@@ -99,10 +111,10 @@ validInput:
 	ret		4					; Clear stack frame
 getData	ENDP
 
-; Description: 
-; Receives: 
-; Returns: 
-; Preconditions: 
+; Description: Procedure fills an array with random integers
+; Receives: request variable by value and @ array
+; Returns: array filled with request many random integers
+; Preconditions: request contains valid number
 ; Registers changed: 
 
 fillArray	PROC
@@ -110,13 +122,15 @@ fillArray	PROC
 	ret
 fillArray	ENDP
 
-; Description: 
-; Receives: 
-; Returns: 
-; Preconditions: 
-; Registers changed: 
+; Description: Procedure to display the list of integers in an array
+; Receives: value of request variable, address of array passed by reference, title of list passed by reference
+; Returns: none
+; Preconditions: request variable contains valid number, and array contains 'request' number of values
+; Registers changed: eax, edx, esi
 
 displayList	PROC
+	push	ebp
+	mov		ebp, esp
 
 	ret
 displayList	ENDP
