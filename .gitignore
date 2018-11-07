@@ -1,0 +1,7 @@
+.vs/
+Debug/
+*.lst
+*.sdf
+*.sln
+*.vcxproj
+*.vcxproj.user
