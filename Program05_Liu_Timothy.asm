@@ -37,6 +37,7 @@ sortedText		BYTE	"The sorted list:", 0dh, 0ah, 0						; Text preceding sorted li
 .code
 main PROC
 	call	introduction
+	push	OFFSET request	; Pass by reference to getData
 	call	getData
 	call	fillArray
 	call	displayList		; Display unsorted list
@@ -64,12 +65,15 @@ introduction	PROC
 introduction	ENDP
 
 ; Description: Procedure to get user input for number of integers to generate
-; Receives: request variable passed as reference
-; Returns: 
-; Preconditions: 
-; Registers changed: 
+; Receives: request variable passed by reference
+; Returns: request variable with valid user input
+; Preconditions: @ request variable pushed on system stack
+; Registers changed: eax, ebx, edx
 
 getData	PROC
+; Set up access to stack frame
+	push	ebp	
+	mov		ebp, esp
 prompt:
 ; Prompt user for number of values to generate
 	mov		edx, OFFSET promptText
@@ -89,8 +93,10 @@ retry:
 	jmp		prompt
 validInput:
 ; Store user input
-	mov		request, eax
-	ret
+	mov		ebx, [ebp+8]		; Get address of request variable
+	mov		[ebx], eax			; Store valid user input
+	pop		ebp
+	ret		4					; Clear stack frame
 getData	ENDP
 
 ; Description: 
