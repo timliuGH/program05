@@ -13,7 +13,7 @@ TITLE Sorting Random Integers     (Program05_Liu_Timothy.asm)
 
 INCLUDE Irvine32.inc
 
-MIN	= 10			; Lowest valid value for user request
+MIN	= 2			; Lowest valid value for user request
 MAX = 200			; Highest valid value for user request; size of array
 LO = 100			; Lowest possible random integer
 HI = 999			; Highest possible random integer
@@ -32,7 +32,7 @@ promptText		BYTE	"How many numbers should be generated? "
 				BYTE	"[10 .. 200]: ", 0									; Prompt to user to input value
 request			DWORD	?													; Number of integers to generate, inputted by user
 invalidText		BYTE	"Invalid input", 0dh, 0ah, 0						; Text for invalid user input
-array			DWORD	1, 2, 3, 4, 5, 6, 7, 8, 9, 10, MAX DUP(?)											; Uninitialized array of 32-bit ints to hold random ints		
+array			DWORD	MAX DUP(?)											; Uninitialized array of 32-bit ints to hold random ints		
 unsortedText	BYTE	"The unsorted random numbers:", 0dh, 0ah, 0			; Text preceding unsorted list
 medianText		BYTE	0dh, 0ah, "The median: ", 0							; Text preceding median of list
 sortedText		BYTE	"The sorted list:", 0dh, 0ah, 0						; Text preceding sorted list
@@ -52,8 +52,8 @@ main PROC
 	call	getData
 
 ; Fill an array with 'request' number of values
-	;push	request				; Pass request variable by value to fillArray
-	;push	OFFSET array		; Pass array by reference to fillArray
+	push	request				; Pass request variable by value to fillArray
+	push	OFFSET array		; Pass array by reference to fillArray
 	call	fillArray
 
 ; Display unsorted list
@@ -66,7 +66,7 @@ main PROC
 	push	OFFSET array				; Pass address of array to sortList
 	push	request						; Pass value of request to sortList
 	call	sortList
-	
+
 ; Calculate and display the median
 	push	OFFSET array			; Pass address of array to displayMedian
 	push	OFFSET medianText		; Pass address of medianText to displayMedian
@@ -152,13 +152,29 @@ getData	ENDP
 
 ; Description: Procedure fills an array with random integers
 ; Receives: request variable by value and @ array
-; Returns: array filled with request many random integers
+; Returns: array filled with 'request' many random integers
 ; Preconditions: request contains valid number
 ; Registers changed: 
 
 fillArray	PROC
+; Set up access to stack frame
+	push	ebp
+	mov		ebp, esp
 
-	ret
+; Save parameters
+	mov		ecx, [ebp+12]		; Save value of request variable
+	mov		esi, [ebp+8]		; Save address of array
+
+	mov		eax, 0
+fill:
+	mov		[esi], eax
+	inc		eax
+	add		esi, 4
+	loop	fill
+
+; Reset stack frame
+	pop		ebp
+	ret		8
 fillArray	ENDP
 
 ; Description: Procedure to display the list of integers in an array
@@ -173,8 +189,8 @@ displayList	PROC
 	mov		ebp, esp
 
 ; Set up access to array via register indirect addressing
-	mov		esi, [ebp+12]
-	mov		ecx, [ebp+16]
+	mov		esi, [ebp+12]									; Save array address
+	mov		ecx, [ebp+16]									; Save value of request variable
 
 ; Display title of array
 	call	Crlf
@@ -219,80 +235,59 @@ sortList	PROC
 	mov		ebp, esp
 
 ; Save parameters
-	mov		esi, [ebp+12]		; Save address of array
+	mov		esi, [ebp+12]		; Save @ array
 	mov		edi, [ebp+8]		; Save value of request
 
 ; Set up selection sort
 	mov		ecx, edi			; Set up outer loop counter
-	sub		ecx, 2				; Process array up to second-to-last element
+	sub		ecx, 1				; Process array up to second-to-last element
 	mov		edx, 0				; Start with first element
 outerLoop:			 
+	mov		eax, edx
 	mov		ebx, edx			; Set up starting point for inner loop
-	inc		ebx					; Start at element after outer loop's element
-	push	edx					; Save outer loop's element
-	push	ecx					; Save outer loop counter
-	mov		ecx, edi			; Set up inner loop counter
-	dec		ecx					; Process up to last element
+	inc		ebx					; Start at one element after outer loop's element
 innerLoop:
-	
-	
-	push edx
-	push ebx
-	push esp
-	push ebp
-	push esi
-	push edi
-; Convert first index to bytes
-	mov		edi, edx			; Save second index
-	push	esi					; Save array address
-	mov		esi, 4				; Set up multiplier
-	mov		edx, 0				; Clear product
-	mov		eax, ebx			; Set up multiplicand
-	mul		esi					; Perform conversion
-	mov		ebx, eax			; Save index as bytes
-; Convert second index to bytes
-	mov		edx, 0				; Clear product
-	mov		eax, edi			; Set up multiplicand
-	mul		esi					; Perform conversion
-	mov		edx, eax			; Save index as bytes
-	pop		esi					; Restore array address
-; Find array elements
-	add		esi, ebx			; Find first element to be compared
-	mov		edi, [esi]			; Save first element to be compared
-	sub		esi, ebx			; Reset pointer to array address
-	add		esi, edx			; Find second element to be compared
-; Check if element is larger than starting point
-	cmp		edi, [esi]
-	pop edi
-	pop esi
-	pop ebp
-	pop esp
-	pop ebx
-	pop edx
-	
-	
-	jle		notGreater
-	mov		edx, ebx			; Update index of largest element
-notGreater:	
-	inc		ebx					; Check next element in array
-	loop	innerLoop
-	mov		eax, edx			; Save index of largest element
-
-; Restore saved registers
-	pop		ecx					; Restore outer loop counter
-	pop		edx					; Restore outer loop's element
-
-; Exchange elements	
+; Save index values in registers
 	push	edi
-	push	ecx
-	push	edx					; Pass index of first element by value to exchange
-	push	eax					; Pass index of second element by value to exchange
-	push	esi					; Pass array address by reference to exchange
-	call	exchange
-	pop		edx
-	pop		ecx
+	push	eax
+	push	ebx
+; Convert indices to bytes
+	push	eax
+	push	ebx
+	call	makeBytes
+; Compare elements in array
+	add		esi, eax			; Go to first index in array
+	mov		edi, [esi]			; Get element at first index
+	sub		esi, eax			; Reset array pointer
+	add		esi, ebx			; Go to second index in array
+	cmp		[esi], edi			; Perform comparison
+	jle		notGreater
+; Retrieve stored index values
+	sub		esi, ebx			; Reset array pointer
+	pop		ebx
+	pop		eax
 	pop		edi
-	inc		edx					; Continue outer loop with next element
+	mov		eax, ebx			; Update with index of larger element
+	jmp		tryNext
+notGreater:
+	sub		esi, ebx			; Reset array pointer
+	pop		ebx
+	pop		eax
+	pop		edi
+tryNext:
+	inc		ebx
+	cmp		ebx, edi
+	jl		innerLoop
+; Convert indices to bytes
+	push	eax
+	push	edx
+	call	makeBytes
+; Exchange elements in array
+	push	eax
+	push	ebx
+	push	esi
+	call	exchange
+	inc		edx
 	loop	outerLoop
 
 ; Reset stack frame
@@ -301,43 +296,33 @@ notGreater:
 sortList	ENDP
 
 ; Description: Sub-procedure to exchange the contents of two array elements with each other
-; Receives: indices of the two elements to be exchanged, and address of array
+; Receives: indices of the two elements to be exchanged, and @ array
 ; Returns: array with the two elements exchanged
 ; Preconditions: none
 ; Registers changed: none
 
 exchange	PROC
 ; Set up access to stack frame
-	push	ebp
+	pushad
 	mov		ebp, esp
 
-; Save address of array
-	mov		esi, [ebp+8]
-; Convert 1st index to bytes
-	mov		eax, [ebp+12]	; Save index of first element
-	mov		edx, 0			; Clear product
-	mov		ecx, 4			; Set up multiplier
-	mul		ecx				; Perform conversion
-	mov		ebx, eax		; Save index in bytes of first element
-	
-; Convert 2nd index to bytes
-	mov		eax, [ebp+16]	; Save index of second element
-	mov		edx, 0			; Clear product
-	mul		ecx				; Perform conversion
-	mov		edx, eax		; Save index in bytes of second element
+; Save parameters
+	mov		esi, [ebp+36]	; Save @ array
+	mov		eax, [ebp+44]	; Save byte index of one element
+	mov		ebx, [ebp+40]	; Save byte index of other element
 
-; Set up swap
+; Set up exchange
 	add		esi, ebx		; Go to first element
 	mov		edi, esi		; Save location of first element
-	mov		eax, [esi]		; Save value of first element
-	sub		esi, ebx		; Return to array address
-	add		esi, edx		; Go to second element
-	xchg	eax, [esi]		; Store first element at location of second element
-	mov		[edi], eax		; Store second element at location of first element
-	sub		esi, edx		; Return to array address
+	mov		edx, [esi]		; Save value of first element
+	sub		esi, ebx		; Reset array pointer
+	add		esi, eax		; Go to second element
+	xchg	edx, [esi]		; Store first element at location of second element
+	mov		[edi], edx		; Store second element at location of first element
+
 ; Restore stack frame
-	pop		ebp
-	ret		8
+	popad
+	ret		12
 exchange	ENDP
 
 ; Description: Procedure to calculate and display the median
@@ -392,5 +377,39 @@ resetStack:
 	pop		ebp
 	ret		12
 displayMedian	ENDP
+
+; Description: Sub-procedure to convert array index to bytes
+; Receives: values of two indices
+; Returns: eax and ebx with indices converted to bytes
+; Preconditions: none
+; Registers changed: eax, ebx
+
+makeBytes PROC
+; Set up access to stack frame
+	push	ebp
+	push	edi
+	push	edx
+	mov		ebp, esp
+
+; Get first index
+	mov		eax, [ebp+16]
+
+; Set up conversion (need to clear edx?)
+	mov		edi, 4							; Set up multiplier
+	mul		edi
+	mov		ebx, eax						; Save result
+
+; Get second index
+	mov		eax, [ebp+20]
+
+; Set up conversion (need to clear edx?)
+	mul		edi
+
+; Reset stack frame
+	pop		edx
+	pop		edi
+	pop		ebp
+	ret		8
+makeBytes ENDP
 
 END main
