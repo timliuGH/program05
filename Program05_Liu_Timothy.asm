@@ -1,7 +1,7 @@
 TITLE Sorting Random Integers     (Program05_Liu_Timothy.asm)
 
 ; Author: Timothy Liu
-; Last Modified: November 5, 2018
+; Last Modified: November 14, 2018
 ; OSU email address: liutim@oregonstate.edu
 ; Course number/section: CS_271_400_F2018
 ; Project Number: 05              Due Date: November 18, 2018
@@ -11,13 +11,16 @@ TITLE Sorting Random Integers     (Program05_Liu_Timothy.asm)
 ;   sort the integers, calculate and display the median value, and display the
 ;	sorted list.
 
+; Implementation notes: This program uses procedures. Procedures do not use
+;	.data segment variables by name.
+
 INCLUDE Irvine32.inc
 
-MIN	= 2			; Lowest valid value for user request
-MAX = 200			; Highest valid value for user request; size of array
+MIN	= 10			; Lowest valid value for user request
+MAX = 200			; Highest valid value for user request; also size of array
 LO = 100			; Lowest possible random integer
 HI = 999			; Highest possible random integer
-MAX_PER_LINE = 10	; Max number of values allowed per display line
+MAX_PER_LINE = 10	; Max number of values allowed to display per line
 TAB = 9				; ASCII code for horizontal tab
 
 .data
@@ -39,47 +42,47 @@ sortedText		BYTE	"The sorted list:", 0dh, 0ah, 0						; Text preceding sorted li
 
 .code
 main PROC
-	;call	Randomize			; Set seed for generating random numbers
+	call	Randomize							; Set seed for generating random numbers
 ; Introduce the program and programmer
-	push	OFFSET intro_1		; Pass intro_1 by reference to introduction
-	push	OFFSET intro_2		; Pass intro_2 by reference to introduction
+	push	OFFSET intro_1						; Pass intro_1 by reference to introduction
+	push	OFFSET intro_2						; Pass intro_2 by reference to introduction
 	call	introduction
 
 ; Get user data
-	push	OFFSET promptText	; Pass promptText by reference to getData
-	push	OFFSET invalidText	; Pass invalidText by reference to getData
-	push	OFFSET request		; Pass request variable by reference to getData
+	push	OFFSET promptText					; Pass promptText by reference to getData
+	push	OFFSET invalidText					; Pass invalidText by reference to getData
+	push	OFFSET request						; Pass request variable by reference to getData
 	call	getData
 
 ; Fill an array with 'request' number of values
-	push	request				; Pass request variable by value to fillArray
-	push	OFFSET array		; Pass array by reference to fillArray
+	push	request								; Pass request variable by value to fillArray
+	push	OFFSET array						; Pass array by reference to fillArray
 	call	fillArray
 
 ; Display unsorted list
-	push	request				; Pass request variable by value to displayList
-	push	OFFSET array		; Pass array by reference to displayList
-	push	OFFSET unsortedText	; Pass title of unsorted list to displayList
+	push	request								; Pass request variable by value to displayList
+	push	OFFSET array						; Pass array by reference to displayList
+	push	OFFSET unsortedText					; Pass title of unsorted list to displayList
 	call	displayList			
 
 ; Sort the array in descending order
-	push	OFFSET array				; Pass address of array to sortList
-	push	request						; Pass value of request to sortList
+	push	OFFSET array						; Pass address of array to sortList
+	push	request								; Pass value of request to sortList
 	call	sortList
 
 ; Calculate and display the median
-	push	OFFSET array			; Pass address of array to displayMedian
-	push	OFFSET medianText		; Pass address of medianText to displayMedian
-	push	request					; Pass value of request to displayMedian
+	push	OFFSET array						; Pass address of array to displayMedian
+	push	OFFSET medianText					; Pass address of medianText to displayMedian
+	push	request								; Pass value of request to displayMedian
 	call	displayMedian
 
 ; Display sorted list
-	push	request				; Pass request variable by value to displayList
-	push	OFFSET array		; Pass array by reference to displayList
-	push	OFFSET sortedText	; Pass title of sorted list to displayList
+	push	request								; Pass request variable by value to displayList
+	push	OFFSET array						; Pass array by reference to displayList
+	push	OFFSET sortedText					; Pass title of sorted list to displayList
 	call	displayList				
 
-	exit						; Exit to operating system
+	exit										; Exit to operating system
 main ENDP
 
 ; Description: Procedure to introduce the program and programmer
@@ -143,7 +146,7 @@ retry:
 validInput:
 ; Store user input
 	mov		ebx, [ebp+8]		; Get address of request variable
-	mov		[ebx], eax			; Store valid user input
+	mov		[ebx], eax			; Store valid user input in request variable
 
 ; Reset stack frame
 	pop		ebp
@@ -154,7 +157,7 @@ getData	ENDP
 ; Receives: request variable by value and @ array
 ; Returns: array filled with 'request' many random integers
 ; Preconditions: request contains valid number
-; Registers changed: 
+; Registers changed: eax, ecx, esi
 
 fillArray	PROC
 ; Set up access to stack frame
@@ -162,14 +165,18 @@ fillArray	PROC
 	mov		ebp, esp
 
 ; Save parameters
-	mov		ecx, [ebp+12]		; Save value of request variable
+	mov		ecx, [ebp+12]		; Save value of request variable as loop counter
 	mov		esi, [ebp+8]		; Save address of array
 
-	mov		eax, 0
+; Set up for RandomRange
+	mov		eax, HI				; 999
+	sub		eax, LO				; 999 - 100 = 899
+	inc		eax					; 900
 fill:
-	mov		[esi], eax
-	inc		eax
-	add		esi, 4
+	call	RandomRange			; [0 .. 899]
+	add		eax, LO				; [100 .. 999]
+	mov		[esi], eax			; Store in array
+	add		esi, 4				; Go to next array index
 	loop	fill
 
 ; Reset stack frame
@@ -178,7 +185,7 @@ fill:
 fillArray	ENDP
 
 ; Description: Procedure to display the list of integers in an array
-; Receives: value of request variable, address of array passed by reference, title of list passed by reference
+; Receives: value of request variable, @ array passed by reference, title of list passed by reference
 ; Returns: none
 ; Preconditions: request variable contains valid number, and array contains 'request' number of values
 ; Registers changed: eax, ebx, ecx, edx, esi
@@ -223,8 +230,8 @@ noNewline:
 	ret		12
 displayList	ENDP
 
-; Description: Procedure to sort an array of integers in descending order
-; Receives: address of array passed by reference and value of request passed by value
+; Description: Procedure to sort an array of integers in descending order via selection sort
+; Receives: @ array passed by reference and request variable passed by value
 ; Returns: array of integers sorted in descending order
 ; Preconditions: array is initialized with 'request' number of values
 ; Registers changed: eax, ebx, ecx, edx, edi, esi
@@ -326,7 +333,7 @@ exchange	PROC
 exchange	ENDP
 
 ; Description: Procedure to calculate and display the median
-; Receives: address of array and medianText passed by reference and request variable passed by value
+; Receives: @ array and medianText passed by reference and request variable passed by value
 ; Returns: none
 ; Preconditions: array is sorted
 ; Registers changed: eax, ebx, ecx, edx, esi
