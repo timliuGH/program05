@@ -2,9 +2,6 @@ TITLE Sorting Random Integers     (Program05_Liu_Timothy.asm)
 
 ; Author: Timothy Liu
 ; Last Modified: November 17, 2018
-; OSU email address: liutim@oregonstate.edu
-; Course number/section: CS_271_400_F2018
-; Project Number: 05              Due Date: November 18, 2018
 ; Description: This program will introduce the program, ask the user for a
 ;	value from [10, 200], generate that many random integers in the range
 ;	[100, 999], store the integers in an array, display the integers unsorted, 
